@@ -1,0 +1,114 @@
+name: Deploy to F5XC
+
+on:
+  push:
+    branches: [ "dev" ]
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  pre-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event"
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+  tflint:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./tofu_xc_resources
+    needs: pre-deploy
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - uses: terraform-linters/setup-tflint@v6
+        name: Setup TFLint
+        with:
+          tflint_version: v0.60.0
+
+      - name: Show version
+        run: tflint --version
+
+      - name: Init TFLint
+        run: |
+          tflint --init
+        env:
+          # https://github.com/terraform-linters/tflint/blob/master/docs/user-guide/plugins.md#avoiding-rate-limiting
+          GITHUB_TOKEN: ${{ github.token }}
+
+      - name: Run TFLint
+        run: |
+          tflint -f compact
+
+  deploy-f5xc:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./tofu_xc_resources
+    outputs:
+      kubeconfig: ${{ steps.kubeconfig.outputs.kubeconfig }}
+    env:
+      VES_P12_PASSWORD: ${{ secrets.VES_P12_PASSWORD }}
+      VES_P12_CONTENT: ${{ secrets.VES_P12_CONTENT }}
+      TF_VAR_ssh_pub_key: ${{ secrets.TF_VAR_ssh_pub_key }}
+      TF_BACKEND_AWS_BUCKET_NAME: ${{ vars.TF_BACKEND_AWS_BUCKET_NAME }}
+      TF_BACKEND_AWS_BUCKET_KEY: ${{ vars.TF_BACKEND_AWS_BUCKET_KEY }}
+      TF_BACKEND_AWS_BUCKET_REGION: ${{ vars.TF_BACKEND_AWS_BUCKET_REGION }}
+
+    needs: tflint
+    # environment: dev
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+        aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+        aws-session-token: ${{ secrets.AWS_SESSION_TOKEN }}
+        aws-region: ${{ vars.AWS_REGION }}
+
+    - uses: opentofu/setup-opentofu@v1
+      with:
+        tofu_version: 1.10.7
+
+    # Tofy init with a specific AWS S3 backend
+    - name: Tofu Init
+      run: |
+        tofu init \
+          -backend-config="bucket=$TF_BACKEND_AWS_BUCKET_NAME" \
+          -backend-config="key=$TF_BACKEND_AWS_BUCKET_KEY" \
+          -backend-config="region=$TF_BACKEND_AWS_BUCKET_REGION"
+
+    # Checks that all Terraform configuration files adhere to a canonical format
+    - name: Tofu Format
+      run: tofu fmt -check -recursive
+
+    # Validate that all Terraform configuration files
+    - name: Tofu Validate
+      run: tofu validate
+
+    # Generates an execution plan for Terraform
+    - name: Tofu Plan
+      run: tofu plan -out xc-mcn.tfplan
+
+    # On push to "main", build or change infrastructure according to Terraform configuration files
+    # Note: It is recommended to set up a required "strict" status check in your repository for "Terraform Cloud". See the documentation on "strict" required status checks for more information: https://help.github.com/en/github/administering-a-repository/types-of-required-status-checks
+    - name: Tofu Apply
+      # if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+      run: tofu apply "xc-mcn.tfplan"
+
+    - name: Tofu output
+      id: kubeconfig
+      run: echo "kubeconfig=$(tofu output -raw my_vk8s_kubeconfig)" >> "$GITHUB_OUTPUT"

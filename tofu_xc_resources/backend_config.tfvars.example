@@ -1,0 +1,5 @@
+# Read https://developer.hashicorp.com/terraform/language/backend#file for file naming convention
+# '.tfvars' choosen for VSCode colour syntax highlighting
+bucket = "<REPLACE ME>"
+key    = "<REPLACE ME>"
+region = "<REPLACE ME>"
