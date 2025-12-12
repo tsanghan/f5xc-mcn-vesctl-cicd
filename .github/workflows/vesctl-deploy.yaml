@@ -1,4 +1,4 @@
-name: Deploy to F5XC
+name: Deploy to F5XC with vesctl
 
 on:
   push:
