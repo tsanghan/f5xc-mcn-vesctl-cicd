@@ -1,0 +1,51 @@
+name: Deploy to F5XC
+
+on:
+  push:
+    branches: [ "dev" ]
+    paths-ignore:
+      - '**.md'
+      - '.github/**'
+      - 'vesctl_resources/**'
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  pre-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "🎉 The job was automatically triggered by a ${{ github.event_name }} event"
+      - run: echo "🐧 This job is now running on a ${{ runner.os }} server hosted by GitHub!"
+      - run: echo "🔎 The name of your branch is ${{ github.ref }} and your repository is ${{ github.repository }}."
+
+  vesctl-deploy:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./vesctl_resources
+    needs: pre-deploy
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v4
+
+      - uses: tsanghan/setup-vesctl-action@main
+        name: Install vesctl
+
+      - name: deploy
+        env:
+          VES_P12_CONTENT: ${{ secrets.VES_P12_CONTENT }}
+          VES_P12_PASSWORD: ${{ secrets.VES_P12_PASSWORD }}
+          XC_SERVER_URL: ${{ vars.XC_SERVER_URL }}
+        run: |
+          touch .vesconfig
+          echo "server-urls: $XC_SERVER_URL" >> .vesconfig
+          echo "p12-bundle: training-dev.console.ves.volterra.io.api-creds.p12" >> .vesconfig
+          echo "$VES_P12_CONTENT" | base64 -d > training-dev.console.ves.volterra.io.api-creds.p12
+          alias vesctl='vesctl --config .vesconfig'
+          vesctl configuration create workload_flavor -i workload_flavor.yaml
+          for item in mongodb spa api inventory recommendations; do
+            vesctl configuration create workload -i workload_"$item".yaml
+          done
