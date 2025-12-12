@@ -31,15 +31,16 @@ jobs:
       - name: Check out repository code
         uses: actions/checkout@v4
 
-      - uses: tsanghan/setup-vesctl-action@main
-        name: Setup vesctl
-
       - name: deploy
         env:
           VES_P12_PASSWORD: ${{ secrets.VES_P12_PASSWORD}}
           VES_P12_CONTENT: ${{ secrets.VES_P12_CONTENT }}
           XC_SERVER_URL: ${{ vars.XC_SERVER_URL}}
         run: |
+          curl -SLO "https://vesio.azureedge.net/releases/vesctl/$(curl -s https://downloads.volterra.io/releases/vesctl/latest.txt)/vesctl.linux-amd64.gz"
+          p7zip -d vesctl.linux-amd64.gz
+          mv vesctl.linux-amd64 vesctl
+          chmod +x vesctl
           touch .vesconfig
           echo "server-urls: $XC_SERVER_URL" >> .vesconfig
           echo "p12-bundle: training-dev.console.ves.volterra.io.api-creds.p12"
