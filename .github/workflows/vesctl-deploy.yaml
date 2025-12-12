@@ -44,8 +44,8 @@ jobs:
           echo "server-urls: $XC_SERVER_URL" >> .vesconfig
           echo "p12-bundle: ./training-dev.console.ves.volterra.io.api-creds.p12" >> .vesconfig
           echo "$VES_P12_CONTENT" | base64 -d > training-dev.console.ves.volterra.io.api-creds.p12
-          alias vesctl='vesctl --config ./.vesconfig'
-          vesctl configuration create workload_flavor -i workload_flavor.yaml
+          #alias vesctl='vesctl --config ./.vesconfig'
+          vesctl --config ./.vesconfig configuration create workload_flavor -i workload_flavor.yaml
           for item in mongodb spa api inventory recommendations; do
-            vesctl configuration create workload -i workload_"$item".yaml
+            vesctl --config ./.vesconfig configuration create workload -i workload_"$item".yaml
           done
