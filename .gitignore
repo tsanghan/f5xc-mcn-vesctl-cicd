@@ -49,3 +49,6 @@ terraform.rc
 
 # backend config
 *.tfbackend
+
+# vesconfig
+.vesconfig

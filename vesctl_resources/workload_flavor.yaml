@@ -1,0 +1,7 @@
+metadata:
+  name: tsanghan-brewz-large-flavor
+  namespace: shared
+spec:
+  memory: "8000"
+  vcpus: 1
+  ephemeral_storage: "2000"

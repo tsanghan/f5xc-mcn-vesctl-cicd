@@ -6,6 +6,7 @@ on:
     paths-ignore:
       - '**.md'
       - '.github/**'
+      - 'vesctl_resources/**'
   workflow_dispatch:
 
 permissions:
