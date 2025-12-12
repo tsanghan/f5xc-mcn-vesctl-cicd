@@ -1,0 +1,36 @@
+metadata:
+  name: spa
+  namespace: tsanghan-brewz
+  labels: {}
+  annotations: {}
+  description: null
+  disable: null
+spec:
+  service:
+    num_replicas: 1
+    containers:
+      - name: brews-spa
+        image:
+          name: ghcr.io/f5devcentral/spa-demo-app-spa:sha-ec8dec7
+          public: {}
+          pull_policy: IMAGE_PULL_POLICY_ALWAYS
+        init_container: null
+        flavor: CONTAINER_FLAVOR_TYPE_TINY
+        liveness_check: null
+        readiness_check: null
+        command: null
+        args: null
+    volumes: null
+    deploy_options:
+      deploy_ce_virtual_sites:
+        virtual_site:
+          - namespace: shared
+            name: tsanghan-brewz-vsite
+    advertise_options:
+      advertise_in_cluster:
+        port:
+          info:
+            port: 8080
+            protocol: PROTOCOL_TCP
+            target_port: 8080
+resource_version: null
